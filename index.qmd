@@ -1,0 +1,12 @@
+---
+title: "okf-ingest"
+subtitle: "The Open Knowledge Format, DuckDB, and knowledge tooling for R & Python."
+listing:
+  contents: posts
+  sort: "date desc"
+  type: default
+  categories: true
+  fields: [date, title, description, categories, reading-time]
+  feed:
+    type: full
+---

@@ -1,0 +1,5 @@
+# Shared options for all posts.
+freeze: true          # don't re-execute code on render (posts use illustrative blocks)
+author: "Travis Jakel"
+toc: true
+code-overflow: wrap

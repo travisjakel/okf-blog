@@ -1,0 +1,11 @@
+---
+title: "About"
+---
+
+This blog covers the [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog)
+and **[okf-ingest](https://github.com/travisjakel/okf-ingest)** — an open-source tool
+that reads, validates, and loads OKF bundles into a portable, semantically-searchable
+DuckDB catalog, from both R and Python.
+
+Written by Travis Jakel. Posts are syndicated on
+[R-bloggers](https://www.r-bloggers.com/) and [Planet Python](https://planetpython.org/).

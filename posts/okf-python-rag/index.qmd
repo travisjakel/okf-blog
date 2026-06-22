@@ -1,0 +1,121 @@
+---
+title: "Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python"
+description: >
+  Google's Open Knowledge Format gives AI agents curated context as folders of
+  markdown. Here's a one-command way to load a bundle into a portable DuckDB
+  catalog and run semantic search over it — from Python (or R).
+date: "2026-06-22"
+categories: [Python, OKF, DuckDB, RAG, LLM, agents]
+---
+
+If you're building with AI agents, you've felt the context problem: the model is only
+as good as the curated knowledge you feed it. In June 2026 Google Cloud proposed a
+standard for exactly that — the
+[Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog):
+a vendor-neutral way to represent organizational knowledge as **a directory of markdown
+files with YAML frontmatter**. One concept per file, markdown links as a graph,
+no required tooling. It formalizes the "LLM wiki" pattern teams were already hacking
+together.
+
+The format is intentionally minimal, which leaves an obvious question: once you *have*
+an OKF bundle, how do you **query** it — or feed it to a retrieval pipeline? Google
+shipped a producer and a visualizer; the community added validators. What was missing
+was a loader that makes a bundle **queryable and searchable**.
+
+[**okf-ingest**](https://github.com/travisjakel/okf-ingest) fills that gap. It reads a
+bundle, validates it (permissively, per spec), loads it into a portable **DuckDB**
+catalog, and lets you **semantically search** it — in Python and R, over the same
+catalog file. (Disclosure: it's my tool.)
+
+## One command, from a URL
+
+Install and ingest a bundle straight from GitHub — no clone, no download dance. The CLI
+handles git URLs and tar/zip archives, clones/extracts to a temp dir, finds the bundle,
+and cleans up:
+
+```bash
+pip install okf-ingest
+
+okf ingest https://github.com/GoogleCloudPlatform/knowledge-catalog.git \
+  --subdir okf/samples/bitcoin --db kb.duckdb
+#> ingested ... -> kb.duckdb
+#>   concepts=… conformant=… (True) errors=0 warnings=… links=… broken=…
+```
+
+`validate` is a CI-friendly linter (non-zero exit on non-conformance); `query` runs SQL
+or a body search over the catalog:
+
+```bash
+okf validate ./my-bundle --strict
+okf query kb.duckdb --search revenue
+```
+
+## In Python
+
+The library mirrors the CLI. `ingest()` returns an open DuckDB connection plus a summary;
+from there it's plain DuckDB:
+
+```python
+import okf
+
+con, summary = okf.ingest("./store", db_path="kb.duckdb")
+print(summary)
+# {'n_files': 5, 'n_concepts': 3, 'n_conformant': 3, 'conformant': True,
+#  'errors': 0, 'warnings': 1, 'links_total': 8, 'links_broken': 1}
+
+con.execute(
+    "SELECT path, type, title FROM okf_concept WHERE NOT reserved"
+).fetchall()
+# [('customers.md', 'BigQuery Table', 'Customers'),
+#  ('metrics/revenue.md', 'Metric', 'Revenue'),
+#  ('orders.md', 'BigQuery Table', 'Orders')]
+```
+
+OKF requires exactly one frontmatter field — `type`, a free string — and is emphatically
+permissive: missing recommended fields, unknown types, and broken links become
+*findings*, never rejections. The catalog records them in an `okf_validation` table.
+
+## Semantic search, no vector DB
+
+This is the part the other OKF tools don't do. `embed()` chunks concept bodies and
+embeds them (default: a local [Ollama](https://ollama.com) `nomic-embed-text` model — no
+API key, nothing leaves your machine), storing vectors in the catalog. The embedder is
+just a callable `texts -> list[vector]`, so swapping in OpenAI is trivial.
+
+```python
+import okf.rag as rag
+
+con, _ = okf.ingest("./store", db_path="kb.duckdb")
+rag.embed(con)                                   # chunk + embed
+
+for path, title, cid, score, text in rag.rag(con, "how is revenue computed?", k=3):
+    print(f"[{score:.3f}] {path} — {title}")
+# [0.709] metrics/revenue.md — Revenue
+# [0.642] orders.md — Orders
+# [0.478] customers.md — Customers
+```
+
+Search is brute-force cosine via DuckDB's native `list_cosine_similarity` — **no
+vector-database extension required**. For most knowledge bundles (hundreds to tens of
+thousands of chunks) that's plenty; a DuckDB-vss HNSW index is a drop-in upgrade for
+larger corpora.
+
+## The reusable pattern
+
+Strip away OKF and the takeaway is a **portable RAG index over a folder of files**:
+parse → load into DuckDB → embed → cosine-search, all in one self-contained `.duckdb`
+file with zero services to run. Because the catalog format is shared across the
+bindings, you can **ingest in Python and query in R** (or vice-versa) — same file, same
+tables.
+
+## Honest scope
+
+OKF is brand new and may evolve, and the *validator* niche already has solid tools
+(Node, a pure-Rust crate). okf-ingest is for the next step: turning a bundle into a
+**queryable, searchable catalog** from Python or R. If you're wiring OKF into a
+retrieval pipeline or an agent's context, it should save you an afternoon.
+
+- **Repo:** <https://github.com/travisjakel/okf-ingest>
+- **OKF spec:** <https://github.com/GoogleCloudPlatform/knowledge-catalog>
+
+Stars, issues, and PRs welcome.

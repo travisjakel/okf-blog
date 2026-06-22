@@ -1,0 +1,174 @@
+---
+title: "Querying Google's Open Knowledge Format from R"
+description: >
+  Google's new OKF turns organizational knowledge into folders of markdown.
+  Here's how to validate one, load it into a DuckDB catalog, and run semantic
+  search over it — entirely from R.
+date: "2026-06-22"
+categories: [R, OKF, DuckDB, RAG, knowledge]
+---
+
+In June 2026, Google Cloud published the
+[Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog) —
+a vendor-neutral way to represent the curated knowledge that AI agents need as context.
+The format is refreshingly boring: **a directory of markdown files with YAML
+frontmatter**, one "concept" per file, with markdown links forming a graph. If you can
+`cat` a file, you can read OKF.
+
+That minimalism is the point — but it leaves a gap. Google shipped a *producer* (an
+agent that turns BigQuery tables into OKF) and an HTML *visualizer*, and the community
+quickly added validators. What was missing was a way to **load an OKF bundle into
+something you can actually query** — and nothing existed in R at all.
+
+So I wrote [**okf-ingest**](https://github.com/travisjakel/okf-ingest), an R + Python
+package that reads a bundle, validates it, loads it into a portable **DuckDB** catalog,
+and lets you **semantically search** it. This post walks the R side end to end.
+(Disclosure: it's my package.)
+
+## What an OKF bundle looks like
+
+A concept file is just frontmatter + markdown:
+
+```markdown
+---
+type: Metric
+title: "Revenue"
+description: "Total order value over a period."
+tags: [finance, kpi]
+timestamp: 2026-06-21T00:00:00Z
+---
+
+# Revenue
+
+Computed from [orders](/orders.md).
+```
+
+The only field OKF *requires* is `type` — and it's a free string, not an enum, because
+consumers must tolerate unknown types. Everything else (`title`, `description`, `tags`,
+`timestamp`) is recommended. Links like `[orders](/orders.md)` are untyped edges that
+turn the folder into a graph.
+
+## Install
+
+`okf` is on [R-universe](https://travisjakel.r-universe.dev):
+
+```r
+install.packages("okf", repos = c(
+  travisjakel = "https://travisjakel.r-universe.dev",
+  CRAN        = "https://cloud.r-project.org"
+))
+```
+
+## Validate, permissively
+
+OKF's conformance bar is deliberately tiny: every non-reserved `.md` file must have
+parseable frontmatter with a non-empty `type`. Everything else — missing recommended
+fields, broken links, unknown types — is a *finding*, never a rejection. `okf` follows
+that to the letter:
+
+```r
+library(okf)
+
+rd  <- okf_read("store")          # a bundle directory
+val <- okf_validate(rd)
+val
+#>                 path severity        rule                              message
+#> 1 metrics/revenue.md     warn broken_link unresolved link: /returns.md
+```
+
+One soft warning (a deliberately broken link in the example bundle), and the bundle is
+still conformant. A real linter would `stop()`; OKF says load what you can and report
+the rest.
+
+## Load into a DuckDB catalog
+
+`okf_ingest()` reads, validates, and writes everything into a DuckDB database:
+
+```r
+res <- okf_ingest("store", db_path = "kb.duckdb")
+str(res$summary)
+#> List of 8
+#>  $ n_files     : int 5
+#>  $ n_concepts  : int 3        # index.md / log.md are reserved, not concepts
+#>  $ n_conformant: int 3
+#>  $ conformant  : logi TRUE
+#>  $ errors      : int 0
+#>  $ warnings    : int 1
+#>  $ links_total : int 8
+#>  $ links_broken: int 1
+```
+
+From here it's *just DuckDB* — four tables (`okf_bundle`, `okf_concept`, `okf_link`,
+`okf_validation`) you can hit with `DBI`:
+
+```r
+library(DBI)
+con <- res$con
+
+dbGetQuery(con, "SELECT path, type, title FROM okf_concept WHERE NOT reserved")
+#>                 path           type    title
+#> 1       customers.md BigQuery Table Customers
+#> 2 metrics/revenue.md         Metric   Revenue
+#> 3          orders.md BigQuery Table   Orders
+
+# the concept graph
+okf_graph_df(con)[, c("src_path", "dst_path", "resolved")]
+```
+
+Because the catalog is plain DuckDB, it's queryable from R, Python, or the bare `duckdb`
+CLI — and it's a single file you can ship.
+
+## The payoff: semantic search
+
+This is where okf-ingest goes past the other tools. `okf_embed()` chunks each concept
+body and embeds it (by default with a local [Ollama](https://ollama.com)
+`nomic-embed-text` model — no data leaves your machine, no API key), storing the vectors
+right in the catalog:
+
+```r
+okf_embed(con)            # -> number of chunks embedded
+```
+
+Then `okf_rag()` embeds a query and ranks chunks by cosine similarity, using DuckDB's
+**native `list_cosine_similarity`** — no vector-database extension required:
+
+```r
+okf_rag(con, "how is revenue computed?", k = 3)[, c("path", "title", "score")]
+#>                 path     title score
+#> 1 metrics/revenue.md   Revenue 0.709
+#> 2          orders.md    Orders 0.642
+#> 3       customers.md Customers 0.478
+```
+
+The pluggable embedder is just a function of `texts` returning vectors, so swapping in
+an OpenAI client (or anything else) is a one-liner.
+
+## Ingest straight from GitHub
+
+You don't need the bundle on disk. `okf_ingest()` accepts a git URL or a tar/zip
+archive (local or remote); it clones/extracts to a temp dir, finds the bundle, and
+cleans up after itself:
+
+```r
+res2 <- okf_ingest(
+  "https://github.com/GoogleCloudPlatform/knowledge-catalog.git",
+  subdir  = "okf/samples/bitcoin",     # bundle within the repo
+  db_path = "bitcoin.duckdb"
+)
+```
+
+## Honest scope
+
+OKF is two weeks old — "an invitation, not yet a standard." And the *validate/lint*
+niche already has good tools (a Node validator, a pure-Rust crate). okf-ingest isn't
+trying to be another linter. It's the only tool that turns a bundle into a
+**SQL-queryable, semantically-searchable DuckDB catalog**, and the only one with R (and
+Python) bindings — which is exactly the gap if you live in the tidy/DuckDB/arrow world.
+
+If you're experimenting with agent context, knowledge bases, or just want a tidy way to
+query a folder of markdown, give it a spin:
+
+- **Repo:** <https://github.com/travisjakel/okf-ingest>
+- **OKF spec:** <https://github.com/GoogleCloudPlatform/knowledge-catalog>
+
+Issues and PRs welcome.

@@ -1,0 +1,28 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "okf-ingest"
+  description: "Notes on the Open Knowledge Format (OKF), DuckDB, and R/Python knowledge tooling."
+  site-url: "https://travisjakel.github.io/okf-blog"
+  navbar:
+    right:
+      - text: Home
+        href: index.qmd
+      - text: About
+        href: about.qmd
+      - icon: github
+        href: https://github.com/travisjakel/okf-ingest
+  page-footer:
+    center: |
+      Posts are syndicated on [R-bloggers](https://www.r-bloggers.com/) and
+      [Planet Python](https://planetpython.org/).
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    code-copy: true
+    code-overflow: wrap
