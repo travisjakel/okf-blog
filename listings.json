@@ -6,15 +6,15 @@
     ]
   },
   {
-    "listing": "/index.html",
+    "listing": "/python.html",
     "items": [
-      "/posts/okf-python-rag/index.html",
-      "/posts/okf-r-duckdb/index.html"
+      "/posts/okf-python-rag/index.html"
     ]
   },
   {
-    "listing": "/python.html",
+    "listing": "/index.html",
     "items": [
+      "/posts/okf-r-duckdb/index.html",
       "/posts/okf-python-rag/index.html"
     ]
   }

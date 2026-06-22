@@ -9,8 +9,8 @@
 <link>https://travisjakel.github.io/okf-blog/python.html</link>
 <atom:link href="https://travisjakel.github.io/okf-blog/python.xml" rel="self" type="application/rss+xml"/>
 <description>Python-focused posts — the feed submitted to Planet Python.</description>
-<generator>quarto-1.8.25</generator>
-<lastBuildDate>Mon, 22 Jun 2026 07:00:00 GMT</lastBuildDate>
+<generator>quarto-1.9.38</generator>
+<lastBuildDate>Mon, 22 Jun 2026 00:00:00 GMT</lastBuildDate>
 <item>
   <title>Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python</title>
   <dc:creator>Travis Jakel</dc:creator>
@@ -193,7 +193,7 @@ font-style: inherit;"># [0.478] customers.md — Customers</span></span></code><
   <category>LLM</category>
   <category>agents</category>
   <guid>https://travisjakel.github.io/okf-blog/posts/okf-python-rag/</guid>
-  <pubDate>Mon, 22 Jun 2026 07:00:00 GMT</pubDate>
+  <pubDate>Mon, 22 Jun 2026 00:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>

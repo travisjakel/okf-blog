@@ -7,6 +7,13 @@
     "text": "Querying Google’s Open Knowledge Format from R\n\n\nGoogle’s new OKF turns organizational knowledge into folders of markdown. Here’s how to validate one, load it into a DuckDB catalog, and run semantic search over it — entirely from R.\n\n\n\n\n\nJun 22, 2026\n\n\nTravis Jakel\n\n\n\n\n\nNo matching items"
   },
   {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "This blog covers the Open Knowledge Format (OKF) and okf-ingest — an open-source tool that reads, validates, and loads OKF bundles into a portable, semantically-searchable DuckDB catalog, from both R and Python.\nWritten by Travis Jakel. Posts are syndicated on R-bloggers and Planet Python."
+  },
+  {
     "objectID": "posts/okf-r-duckdb/index.html",
     "href": "posts/okf-r-duckdb/index.html",
     "title": "Querying Google’s Open Knowledge Format from R",
@@ -63,18 +70,11 @@
     "text": "Honest scope\nOKF is two weeks old — “an invitation, not yet a standard.” And the validate/lint niche already has good tools (a Node validator, a pure-Rust crate). okf-ingest isn’t trying to be another linter. It’s the only tool that turns a bundle into a SQL-queryable, semantically-searchable DuckDB catalog, and the only one with R (and Python) bindings — which is exactly the gap if you live in the tidy/DuckDB/arrow world.\nIf you’re experimenting with agent context, knowledge bases, or just want a tidy way to query a folder of markdown, give it a spin:\n\nRepo: https://github.com/travisjakel/okf-ingest\nOKF spec: https://github.com/GoogleCloudPlatform/knowledge-catalog\n\nIssues and PRs welcome."
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "okf-ingest",
+    "objectID": "python.html",
+    "href": "python.html",
+    "title": "Python posts",
     "section": "",
-    "text": "Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python\n\n\n\nPython\n\nOKF\n\nDuckDB\n\nRAG\n\nLLM\n\nagents\n\n\n\nGoogle’s Open Knowledge Format gives AI agents curated context as folders of markdown. Here’s a one-command way to load a bundle into a portable DuckDB catalog and run semantic search over it — from Python (or R).\n\n\n\n\n\nJun 22, 2026\n\n4 min\n\n\n\n\n\n\nQuerying Google’s Open Knowledge Format from R\n\n\n\nR\n\nOKF\n\nDuckDB\n\nRAG\n\nknowledge\n\n\n\nGoogle’s new OKF turns organizational knowledge into folders of markdown. Here’s how to validate one, load it into a DuckDB catalog, and run semantic search over it — entirely from R.\n\n\n\n\n\nJun 22, 2026\n\n5 min\n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "This blog covers the Open Knowledge Format (OKF) and okf-ingest — an open-source tool that reads, validates, and loads OKF bundles into a portable, semantically-searchable DuckDB catalog, from both R and Python.\nWritten by Travis Jakel. Posts are syndicated on R-bloggers and Planet Python."
+    "text": "Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python\n\n\nGoogle’s Open Knowledge Format gives AI agents curated context as folders of markdown. Here’s a one-command way to load a bundle into a portable DuckDB catalog and run semantic search over it — from Python (or R).\n\n\n\n\n\nJun 22, 2026\n\n\nTravis Jakel\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "posts/okf-python-rag/index.html",
@@ -119,10 +119,10 @@
     "text": "Honest scope\nOKF is brand new and may evolve, and the validator niche already has solid tools (Node, a pure-Rust crate). okf-ingest is for the next step: turning a bundle into a queryable, searchable catalog from Python or R. If you’re wiring OKF into a retrieval pipeline or an agent’s context, it should save you an afternoon.\n\nRepo: https://github.com/travisjakel/okf-ingest\nOKF spec: https://github.com/GoogleCloudPlatform/knowledge-catalog\n\nStars, issues, and PRs welcome."
   },
   {
-    "objectID": "python.html",
-    "href": "python.html",
-    "title": "Python posts",
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "okf-ingest",
     "section": "",
-    "text": "Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python\n\n\nGoogle’s Open Knowledge Format gives AI agents curated context as folders of markdown. Here’s a one-command way to load a bundle into a portable DuckDB catalog and run semantic search over it — from Python (or R).\n\n\n\n\n\nJun 22, 2026\n\n\nTravis Jakel\n\n\n\n\n\nNo matching items"
+    "text": "Querying Google’s Open Knowledge Format from R\n\n\n\nR\n\nOKF\n\nDuckDB\n\nRAG\n\nknowledge\n\n\n\nGoogle’s new OKF turns organizational knowledge into folders of markdown. Here’s how to validate one, load it into a DuckDB catalog, and run semantic search over it — entirely from R.\n\n\n\n\n\nJun 22, 2026\n\n5 min\n\n\n\n\n\n\nMake any OKF knowledge bundle searchable: DuckDB + embeddings in Python\n\n\n\nPython\n\nOKF\n\nDuckDB\n\nRAG\n\nLLM\n\nagents\n\n\n\nGoogle’s Open Knowledge Format gives AI agents curated context as folders of markdown. Here’s a one-command way to load a bundle into a portable DuckDB catalog and run semantic search over it — from Python (or R).\n\n\n\n\n\nJun 22, 2026\n\n4 min\n\n\n\n\nNo matching items"
   }
 ]

@@ -9,8 +9,8 @@
 <link>https://travisjakel.github.io/okf-blog/r.html</link>
 <atom:link href="https://travisjakel.github.io/okf-blog/r.xml" rel="self" type="application/rss+xml"/>
 <description>R-focused posts — the feed submitted to R-bloggers.</description>
-<generator>quarto-1.8.25</generator>
-<lastBuildDate>Mon, 22 Jun 2026 07:00:00 GMT</lastBuildDate>
+<generator>quarto-1.9.38</generator>
+<lastBuildDate>Mon, 22 Jun 2026 00:00:00 GMT</lastBuildDate>
 <item>
   <title>Querying Google’s Open Knowledge Format from R</title>
   <dc:creator>Travis Jakel</dc:creator>
@@ -300,7 +300,7 @@ font-style: inherit;">"bitcoin.duckdb"</span></span>
   <category>RAG</category>
   <category>knowledge</category>
   <guid>https://travisjakel.github.io/okf-blog/posts/okf-r-duckdb/</guid>
-  <pubDate>Mon, 22 Jun 2026 07:00:00 GMT</pubDate>
+  <pubDate>Mon, 22 Jun 2026 00:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>
