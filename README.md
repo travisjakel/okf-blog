@@ -1,5 +1,9 @@
 # okf-ingest blog
 
+📖 **Read it live → <https://travisjakel.github.io/okf-blog/>**
+
+*(This repo is just the blog's source. Send readers to the live site above — not here.)*
+
 A minimal [Quarto](https://quarto.org) blog that hosts the okf-ingest write-ups and
 provides the **full-content RSS feed** required by R-bloggers and Planet Python.
 
