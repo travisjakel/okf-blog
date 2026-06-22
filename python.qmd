@@ -1,0 +1,11 @@
+---
+title: "Python posts"
+description: "Python-focused posts — the feed submitted to Planet Python."
+listing:
+  contents: [posts/okf-python-rag/index.qmd]
+  sort: "date desc"
+  type: default
+  feed:
+    type: full
+    title: "okf-ingest — Python posts"
+---

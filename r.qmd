@@ -1,0 +1,11 @@
+---
+title: "R posts"
+description: "R-focused posts — the feed submitted to R-bloggers."
+listing:
+  contents: [posts/okf-r-duckdb/index.qmd]
+  sort: "date desc"
+  type: default
+  feed:
+    type: full
+    title: "okf-ingest — R posts"
+---
