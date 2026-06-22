@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>okf-ingest</title>
+<link>https://travisjakel.github.io/okf-blog/</link>
+<atom:link href="https://travisjakel.github.io/okf-blog/index.xml" rel="self" type="application/rss+xml"/>
+<description>Notes on the Open Knowledge Format (OKF), DuckDB, and R/Python knowledge tooling.</description>
+<generator>quarto-1.8.25</generator>
+<lastBuildDate>Mon, 22 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python</title>
+  <dc:creator>Travis Jakel</dc:creator>
+  <link>https://travisjakel.github.io/okf-blog/posts/okf-python-rag/</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>If you’re building with AI agents, you’ve felt the context problem: the model is only as good as the curated knowledge you feed it. In June 2026 Google Cloud proposed a standard for exactly that — the <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog">Open Knowledge Format (OKF)</a>: a vendor-neutral way to represent organizational knowledge as <strong>a directory of markdown files with YAML frontmatter</strong>. One concept per file, markdown links as a graph, no required tooling. It formalizes the “LLM wiki” pattern teams were already hacking together.</p>
+<p>The format is intentionally minimal, which leaves an obvious question: once you <em>have</em> an OKF bundle, how do you <strong>query</strong> it — or feed it to a retrieval pipeline? Google shipped a producer and a visualizer; the community added validators. What was missing was a loader that makes a bundle <strong>queryable and searchable</strong>.</p>
+<p><a href="https://github.com/travisjakel/okf-ingest"><strong>okf-ingest</strong></a> fills that gap. It reads a bundle, validates it (permissively, per spec), loads it into a portable <strong>DuckDB</strong> catalog, and lets you <strong>semantically search</strong> it — in Python and R, over the same catalog file. (Disclosure: it’s my tool.)</p>
+<section id="one-command-from-a-url" class="level2">
+<h2 class="anchored" data-anchor-id="one-command-from-a-url">One command, from a URL</h2>
+<p>Install and ingest a bundle straight from GitHub — no clone, no download dance. The CLI handles git URLs and tar/zip archives, clones/extracts to a temp dir, finds the bundle, and cleans up:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">pip</span> install okf-ingest</span>
+<span id="cb1-2"></span>
+<span id="cb1-3"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">okf</span> ingest https://github.com/GoogleCloudPlatform/knowledge-catalog.git <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb1-4">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--subdir</span> okf/samples/bitcoin <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--db</span> kb.duckdb</span>
+<span id="cb1-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; ingested ... -&gt; kb.duckdb</span></span>
+<span id="cb1-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;   concepts=… conformant=… (True) errors=0 warnings=… links=… broken=…</span></span></code></pre></div></div>
+<p><code>validate</code> is a CI-friendly linter (non-zero exit on non-conformance); <code>query</code> runs SQL or a body search over the catalog:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">okf</span> validate ./my-bundle <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--strict</span></span>
+<span id="cb2-2"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">okf</span> query kb.duckdb <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--search</span> revenue</span></code></pre></div></div>
+</section>
+<section id="in-python" class="level2">
+<h2 class="anchored" data-anchor-id="in-python">In Python</h2>
+<p>The library mirrors the CLI. <code>ingest()</code> returns an open DuckDB connection plus a summary; from there it’s plain DuckDB:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> okf</span>
+<span id="cb3-2"></span>
+<span id="cb3-3">con, summary <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> okf.ingest(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"./store"</span>, db_path<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"kb.duckdb"</span>)</span>
+<span id="cb3-4"><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(summary)</span>
+<span id="cb3-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># {'n_files': 5, 'n_concepts': 3, 'n_conformant': 3, 'conformant': True,</span></span>
+<span id="cb3-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#  'errors': 0, 'warnings': 1, 'links_total': 8, 'links_broken': 1}</span></span>
+<span id="cb3-7"></span>
+<span id="cb3-8">con.execute(</span>
+<span id="cb3-9">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"SELECT path, type, title FROM okf_concept WHERE NOT reserved"</span></span>
+<span id="cb3-10">).fetchall()</span>
+<span id="cb3-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [('customers.md', 'BigQuery Table', 'Customers'),</span></span>
+<span id="cb3-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#  ('metrics/revenue.md', 'Metric', 'Revenue'),</span></span>
+<span id="cb3-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#  ('orders.md', 'BigQuery Table', 'Orders')]</span></span></code></pre></div></div>
+<p>OKF requires exactly one frontmatter field — <code>type</code>, a free string — and is emphatically permissive: missing recommended fields, unknown types, and broken links become <em>findings</em>, never rejections. The catalog records them in an <code>okf_validation</code> table.</p>
+</section>
+<section id="semantic-search-no-vector-db" class="level2">
+<h2 class="anchored" data-anchor-id="semantic-search-no-vector-db">Semantic search, no vector DB</h2>
+<p>This is the part the other OKF tools don’t do. <code>embed()</code> chunks concept bodies and embeds them (default: a local <a href="https://ollama.com">Ollama</a> <code>nomic-embed-text</code> model — no API key, nothing leaves your machine), storing vectors in the catalog. The embedder is just a callable <code>texts -&gt; list[vector]</code>, so swapping in OpenAI is trivial.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> okf.rag <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> rag</span>
+<span id="cb4-2"></span>
+<span id="cb4-3">con, _ <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> okf.ingest(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"./store"</span>, db_path<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"kb.duckdb"</span>)</span>
+<span id="cb4-4">rag.embed(con)                                   <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># chunk + embed</span></span>
+<span id="cb4-5"></span>
+<span id="cb4-6"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> path, title, cid, score, text <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> rag.rag(con, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"how is revenue computed?"</span>, k<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>):</span>
+<span id="cb4-7">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"[</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>score<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:.3f}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">] </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>path<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;"> — </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>title<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span>
+<span id="cb4-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [0.709] metrics/revenue.md — Revenue</span></span>
+<span id="cb4-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [0.642] orders.md — Orders</span></span>
+<span id="cb4-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># [0.478] customers.md — Customers</span></span></code></pre></div></div>
+<p>Search is brute-force cosine via DuckDB’s native <code>list_cosine_similarity</code> — <strong>no vector-database extension required</strong>. For most knowledge bundles (hundreds to tens of thousands of chunks) that’s plenty; a DuckDB-vss HNSW index is a drop-in upgrade for larger corpora.</p>
+</section>
+<section id="the-reusable-pattern" class="level2">
+<h2 class="anchored" data-anchor-id="the-reusable-pattern">The reusable pattern</h2>
+<p>Strip away OKF and the takeaway is a <strong>portable RAG index over a folder of files</strong>: parse → load into DuckDB → embed → cosine-search, all in one self-contained <code>.duckdb</code> file with zero services to run. Because the catalog format is shared across the bindings, you can <strong>ingest in Python and query in R</strong> (or vice-versa) — same file, same tables.</p>
+</section>
+<section id="honest-scope" class="level2">
+<h2 class="anchored" data-anchor-id="honest-scope">Honest scope</h2>
+<p>OKF is brand new and may evolve, and the <em>validator</em> niche already has solid tools (Node, a pure-Rust crate). okf-ingest is for the next step: turning a bundle into a <strong>queryable, searchable catalog</strong> from Python or R. If you’re wiring OKF into a retrieval pipeline or an agent’s context, it should save you an afternoon.</p>
+<ul>
+<li><strong>Repo:</strong> <a href="https://github.com/travisjakel/okf-ingest" class="uri">https://github.com/travisjakel/okf-ingest</a></li>
+<li><strong>OKF spec:</strong> <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog" class="uri">https://github.com/GoogleCloudPlatform/knowledge-catalog</a></li>
+</ul>
+<p>Stars, issues, and PRs welcome.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>Python</category>
+  <category>OKF</category>
+  <category>DuckDB</category>
+  <category>RAG</category>
+  <category>LLM</category>
+  <category>agents</category>
+  <guid>https://travisjakel.github.io/okf-blog/posts/okf-python-rag/</guid>
+  <pubDate>Mon, 22 Jun 2026 07:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Querying Google’s Open Knowledge Format from R</title>
+  <dc:creator>Travis Jakel</dc:creator>
+  <link>https://travisjakel.github.io/okf-blog/posts/okf-r-duckdb/</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>In June 2026, Google Cloud published the <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog">Open Knowledge Format (OKF)</a> — a vendor-neutral way to represent the curated knowledge that AI agents need as context. The format is refreshingly boring: <strong>a directory of markdown files with YAML frontmatter</strong>, one “concept” per file, with markdown links forming a graph. If you can <code>cat</code> a file, you can read OKF.</p>
+<p>That minimalism is the point — but it leaves a gap. Google shipped a <em>producer</em> (an agent that turns BigQuery tables into OKF) and an HTML <em>visualizer</em>, and the community quickly added validators. What was missing was a way to <strong>load an OKF bundle into something you can actually query</strong> — and nothing existed in R at all.</p>
+<p>So I wrote <a href="https://github.com/travisjakel/okf-ingest"><strong>okf-ingest</strong></a>, an R + Python package that reads a bundle, validates it, loads it into a portable <strong>DuckDB</strong> catalog, and lets you <strong>semantically search</strong> it. This post walks the R side end to end. (Disclosure: it’s my package.)</p>
+<section id="what-an-okf-bundle-looks-like" class="level2">
+<h2 class="anchored" data-anchor-id="what-an-okf-bundle-looks-like">What an OKF bundle looks like</h2>
+<p>A concept file is just frontmatter + markdown:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb1-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">---</span></span>
+<span id="cb1-2"><span class="an" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">type:</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"> Metric</span></span>
+<span id="cb1-3"><span class="an" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">title:</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"> "Revenue"</span></span>
+<span id="cb1-4"><span class="an" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">description:</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"> "Total order value over a period."</span></span>
+<span id="cb1-5"><span class="an" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">tags:</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"> [finance, kpi]</span></span>
+<span id="cb1-6"><span class="an" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">timestamp:</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"> 2026-06-21T00:00:00Z</span></span>
+<span id="cb1-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">---</span></span>
+<span id="cb1-8"></span>
+<span id="cb1-9"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;"># Revenue</span></span>
+<span id="cb1-10"></span>
+<span id="cb1-11">Computed from <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">[</span><span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">orders</span><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">](/orders.md)</span>.</span></code></pre></div></div>
+<p>The only field OKF <em>requires</em> is <code>type</code> — and it’s a free string, not an enum, because consumers must tolerate unknown types. Everything else (<code>title</code>, <code>description</code>, <code>tags</code>, <code>timestamp</code>) is recommended. Links like <code>[orders](/orders.md)</code> are untyped edges that turn the folder into a graph.</p>
+</section>
+<section id="install" class="level2">
+<h2 class="anchored" data-anchor-id="install">Install</h2>
+<p><code>okf</code> is on <a href="https://travisjakel.r-universe.dev">R-universe</a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">install.packages</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"okf"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">repos =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(</span>
+<span id="cb2-2">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">travisjakel =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"https://travisjakel.r-universe.dev"</span>,</span>
+<span id="cb2-3">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">CRAN        =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"https://cloud.r-project.org"</span></span>
+<span id="cb2-4">))</span></code></pre></div></div>
+</section>
+<section id="validate-permissively" class="level2">
+<h2 class="anchored" data-anchor-id="validate-permissively">Validate, permissively</h2>
+<p>OKF’s conformance bar is deliberately tiny: every non-reserved <code>.md</code> file must have parseable frontmatter with a non-empty <code>type</code>. Everything else — missing recommended fields, broken links, unknown types — is a <em>finding</em>, never a rejection. <code>okf</code> follows that to the letter:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(okf)</span>
+<span id="cb3-2"></span>
+<span id="cb3-3">rd  <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_read</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"store"</span>)          <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># a bundle directory</span></span>
+<span id="cb3-4">val <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_validate</span>(rd)</span>
+<span id="cb3-5">val</span>
+<span id="cb3-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;                 path severity        rule                              message</span></span>
+<span id="cb3-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 1 metrics/revenue.md     warn broken_link unresolved link: /returns.md</span></span></code></pre></div></div>
+<p>One soft warning (a deliberately broken link in the example bundle), and the bundle is still conformant. A real linter would <code>stop()</code>; OKF says load what you can and report the rest.</p>
+</section>
+<section id="load-into-a-duckdb-catalog" class="level2">
+<h2 class="anchored" data-anchor-id="load-into-a-duckdb-catalog">Load into a DuckDB catalog</h2>
+<p><code>okf_ingest()</code> reads, validates, and writes everything into a DuckDB database:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">res <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_ingest</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"store"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">db_path =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"kb.duckdb"</span>)</span>
+<span id="cb4-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">str</span>(res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>summary)</span>
+<span id="cb4-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; List of 8</span></span>
+<span id="cb4-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ n_files     : int 5</span></span>
+<span id="cb4-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ n_concepts  : int 3        # index.md / log.md are reserved, not concepts</span></span>
+<span id="cb4-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ n_conformant: int 3</span></span>
+<span id="cb4-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ conformant  : logi TRUE</span></span>
+<span id="cb4-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ errors      : int 0</span></span>
+<span id="cb4-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ warnings    : int 1</span></span>
+<span id="cb4-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ links_total : int 8</span></span>
+<span id="cb4-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ links_broken: int 1</span></span></code></pre></div></div>
+<p>From here it’s <em>just DuckDB</em> — four tables (<code>okf_bundle</code>, <code>okf_concept</code>, <code>okf_link</code>, <code>okf_validation</code>) you can hit with <code>DBI</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(DBI)</span>
+<span id="cb5-2">con <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> res<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>con</span>
+<span id="cb5-3"></span>
+<span id="cb5-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dbGetQuery</span>(con, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"SELECT path, type, title FROM okf_concept WHERE NOT reserved"</span>)</span>
+<span id="cb5-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;                 path           type    title</span></span>
+<span id="cb5-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 1       customers.md BigQuery Table Customers</span></span>
+<span id="cb5-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 2 metrics/revenue.md         Metric   Revenue</span></span>
+<span id="cb5-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 3          orders.md BigQuery Table   Orders</span></span>
+<span id="cb5-9"></span>
+<span id="cb5-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># the concept graph</span></span>
+<span id="cb5-11"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_graph_df</span>(con)[, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"src_path"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"dst_path"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"resolved"</span>)]</span></code></pre></div></div>
+<p>Because the catalog is plain DuckDB, it’s queryable from R, Python, or the bare <code>duckdb</code> CLI — and it’s a single file you can ship.</p>
+</section>
+<section id="the-payoff-semantic-search" class="level2">
+<h2 class="anchored" data-anchor-id="the-payoff-semantic-search">The payoff: semantic search</h2>
+<p>This is where okf-ingest goes past the other tools. <code>okf_embed()</code> chunks each concept body and embeds it (by default with a local <a href="https://ollama.com">Ollama</a> <code>nomic-embed-text</code> model — no data leaves your machine, no API key), storing the vectors right in the catalog:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_embed</span>(con)            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># -&gt; number of chunks embedded</span></span></code></pre></div></div>
+<p>Then <code>okf_rag()</code> embeds a query and ranks chunks by cosine similarity, using DuckDB’s <strong>native <code>list_cosine_similarity</code></strong> — no vector-database extension required:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_rag</span>(con, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"how is revenue computed?"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">k =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>)[, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"path"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"title"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"score"</span>)]</span>
+<span id="cb7-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;                 path     title score</span></span>
+<span id="cb7-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 1 metrics/revenue.md   Revenue 0.709</span></span>
+<span id="cb7-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 2          orders.md    Orders 0.642</span></span>
+<span id="cb7-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 3       customers.md Customers 0.478</span></span></code></pre></div></div>
+<p>The pluggable embedder is just a function of <code>texts</code> returning vectors, so swapping in an OpenAI client (or anything else) is a one-liner.</p>
+</section>
+<section id="ingest-straight-from-github" class="level2">
+<h2 class="anchored" data-anchor-id="ingest-straight-from-github">Ingest straight from GitHub</h2>
+<p>You don’t need the bundle on disk. <code>okf_ingest()</code> accepts a git URL or a tar/zip archive (local or remote); it clones/extracts to a temp dir, finds the bundle, and cleans up after itself:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1">res2 <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">okf_ingest</span>(</span>
+<span id="cb8-2">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"https://github.com/GoogleCloudPlatform/knowledge-catalog.git"</span>,</span>
+<span id="cb8-3">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">subdir  =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"okf/samples/bitcoin"</span>,     <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># bundle within the repo</span></span>
+<span id="cb8-4">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">db_path =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"bitcoin.duckdb"</span></span>
+<span id="cb8-5">)</span></code></pre></div></div>
+</section>
+<section id="honest-scope" class="level2">
+<h2 class="anchored" data-anchor-id="honest-scope">Honest scope</h2>
+<p>OKF is two weeks old — “an invitation, not yet a standard.” And the <em>validate/lint</em> niche already has good tools (a Node validator, a pure-Rust crate). okf-ingest isn’t trying to be another linter. It’s the only tool that turns a bundle into a <strong>SQL-queryable, semantically-searchable DuckDB catalog</strong>, and the only one with R (and Python) bindings — which is exactly the gap if you live in the tidy/DuckDB/arrow world.</p>
+<p>If you’re experimenting with agent context, knowledge bases, or just want a tidy way to query a folder of markdown, give it a spin:</p>
+<ul>
+<li><strong>Repo:</strong> <a href="https://github.com/travisjakel/okf-ingest" class="uri">https://github.com/travisjakel/okf-ingest</a></li>
+<li><strong>OKF spec:</strong> <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog" class="uri">https://github.com/GoogleCloudPlatform/knowledge-catalog</a></li>
+</ul>
+<p>Issues and PRs welcome.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>R</category>
+  <category>OKF</category>
+  <category>DuckDB</category>
+  <category>RAG</category>
+  <category>knowledge</category>
+  <guid>https://travisjakel.github.io/okf-blog/posts/okf-r-duckdb/</guid>
+  <pubDate>Mon, 22 Jun 2026 07:00:00 GMT</pubDate>
+</item>
+</channel>
+</rss>
