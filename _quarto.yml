@@ -15,6 +15,9 @@ website:
       - icon: github
         href: https://github.com/travisjakel/okf-ingest
   page-footer:
+    left: |
+      © 2026 Travis S. Jakel · Posts licensed
+      [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
     center: |
       Posts are syndicated on [R-bloggers](https://www.r-bloggers.com/) and
       [Planet Python](https://planetpython.org/).
