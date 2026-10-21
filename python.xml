@@ -9,7 +9,7 @@
 <link>https://travisjakel.github.io/okf-blog/python.html</link>
 <atom:link href="https://travisjakel.github.io/okf-blog/python.xml" rel="self" type="application/rss+xml"/>
 <description>Python-focused posts — the feed submitted to Planet Python.</description>
-<generator>quarto-1.9.38</generator>
+<generator>quarto-1.10.19</generator>
 <lastBuildDate>Mon, 22 Jun 2026 00:00:00 GMT</lastBuildDate>
 <item>
   <title>Make any OKF knowledge bundle searchable: DuckDB + embeddings in Python</title>

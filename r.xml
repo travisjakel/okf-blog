@@ -9,7 +9,7 @@
 <link>https://travisjakel.github.io/okf-blog/r.html</link>
 <atom:link href="https://travisjakel.github.io/okf-blog/r.xml" rel="self" type="application/rss+xml"/>
 <description>R-focused posts — the feed submitted to R-bloggers.</description>
-<generator>quarto-1.9.38</generator>
+<generator>quarto-1.10.19</generator>
 <lastBuildDate>Mon, 22 Jun 2026 00:00:00 GMT</lastBuildDate>
 <item>
   <title>Querying Google’s Open Knowledge Format from R</title>
